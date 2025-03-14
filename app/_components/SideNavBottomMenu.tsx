@@ -112,16 +112,7 @@ const SideNavBottomMenu = ({ onFileCreate, length }: any) => {
         </DialogContent>
       </Dialog>
 
-      {/* progress */}
-      <Progress value={length * 20} className="bg-neutral-700" />
-      <div className="text-xs mt-2">
-        <span className="font-bold">{length}</span> out of{" "}
-        <span className="font-bold">5</span> files used.
-      </div>
-      <div className="text-xs mt-1 mb-2">
-        <span className="font-semibold cursor-pointer underline">Upgrade</span>{" "}
-        your plan for unlimited access.
-      </div>
+
     </div>
   );
 };
