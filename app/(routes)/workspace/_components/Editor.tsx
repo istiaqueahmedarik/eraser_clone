@@ -38,6 +38,9 @@ const Editor = ({
 }) => {
   const ref = useRef<EditorJs>();
   const [document, setDocument] = useState(rawDocument);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
 
   const updateDocument = useMutation(api.files.updateDocument);
 
@@ -49,6 +52,20 @@ const Editor = ({
     console.log("triggered" + onSaveTrigger);
     onDocumentSave();
   }, [onSaveTrigger]);
+
+  // Set up auto-save interval (every 30 seconds)
+  useEffect(() => {
+    const autoSaveInterval = setInterval(async () => {
+      if (hasChanges && ref.current) {
+        setIsAutoSaving(true);
+        await onDocumentSave(true);
+        setHasChanges(false);
+        setIsAutoSaving(false);
+      }
+    }, 5000); // 30 seconds
+
+    return () => clearInterval(autoSaveInterval);
+  }, [hasChanges]);
 
   const initEditor = () => {
     const editor = new EditorJs({
@@ -66,21 +83,36 @@ const Editor = ({
         checklist: checkList,
       },
       data: fileData.document ? JSON.parse(fileData.document) : document,
+      onChange: () => {
+        setHasChanges(true);
+      },
     });
     editor.isReady.then(() => {
       ref.current = editor;
     });
   };
 
-  const onDocumentSave = async () => {
+  const onDocumentSave = async (isAutoSave: boolean = false) => {
     if (ref.current) {
-      const savedData = await ref.current.save();
-      const resp = await updateDocument({
-        _id: fileId,
-        document: JSON.stringify(savedData),
-      });
+      try {
+        const savedData = await ref.current.save();
+        const resp = await updateDocument({
+          _id: fileId,
+          document: JSON.stringify(savedData),
+        });
 
-      toast.success("Document Saved");
+        setLastSaved(new Date());
+        setHasChanges(false);
+
+        if (!isAutoSave) {
+          toast.success("Document Saved");
+        } else {
+          toast.success("Document Auto-Saved");
+        }
+      } catch (error) {
+        toast.error("Failed to save document");
+        console.error("Save error:", error);
+      }
     }
   };
 
@@ -91,6 +123,12 @@ const Editor = ({
         id="editorjs"
         key={"editorjs"}
       ></div>
+      {lastSaved && (
+        <div className="text-xs text-neutral-400 pl-2">
+          Last saved: {lastSaved.toLocaleTimeString()}
+          {isAutoSaving && " (Auto-saving...)"}
+        </div>
+      )}
     </div>
   );
 };
